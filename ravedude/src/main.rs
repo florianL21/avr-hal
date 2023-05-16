@@ -37,6 +37,12 @@ struct Args {
     #[structopt(short = "b", long = "baudrate")]
     baudrate: Option<u32>,
 
+    /// Flash via arduino ISP.
+    /// Which arduino board to use as the ISP adapter. Options are the same as for the board setting.
+    /// The target chip is selected via the board option.
+    #[structopt(short = "i", long = "isp")]
+    isp: Option<String>,
+
     /// Overwrite which port to use.  By default ravedude will try to find a connected board by
     /// itself.
     #[structopt(short = "P", long = "port", parse(from_os_str), env = "RAVEDUDE_PORT")]
@@ -89,7 +95,13 @@ fn ravedude() -> anyhow::Result<()> {
     let args: Args = structopt::StructOpt::from_args();
     avrdude::Avrdude::require_min_ver(MIN_VERSION_AVRDUDE)?;
 
-    let board = board::get_board(&args.board).expect("board not found");
+    let board = if let Some(isp) = args.isp {
+        let isp = board::get_board(&isp).expect("isp board not found");
+        let target = board::get_board(&args.board).expect("board not found");
+        Box::new(board::ISPBoard::new(target, isp))
+    } else {
+        board::get_board(&args.board).expect("board not found")
+    };
 
     task_message!("Board", "{}", board.display_name());
 

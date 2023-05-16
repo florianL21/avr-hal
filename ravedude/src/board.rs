@@ -47,6 +47,46 @@ fn find_port_from_vid_pid_list(list: &[(u16, u16)]) -> anyhow::Result<std::path:
 
 // ----------------------------------------------------------------------------
 
+pub struct ISPBoard {
+    target_board: Box<dyn Board>,
+    isp_board: Box<dyn Board>,
+}
+
+impl ISPBoard {
+    pub fn new(target_board: Box<dyn Board>, isp_board: Box<dyn Board>) -> ISPBoard {
+        ISPBoard {
+            target_board,
+            isp_board,
+        }
+    }
+}
+
+impl Board for ISPBoard {
+    fn display_name(&self) -> &str {
+        self.target_board.display_name()
+    }
+
+    fn needs_reset(&self) -> Option<&str> {
+        None
+    }
+
+    fn avrdude_options(&self) -> avrdude::AvrdudeOptions {
+        let target_options = self.target_board.avrdude_options();
+        avrdude::AvrdudeOptions {
+            programmer: "stk500v1",
+            partno: target_options.partno,
+            baudrate: Some(19200),
+            do_chip_erase: target_options.do_chip_erase,
+        }
+    }
+
+    fn guess_port(&self) -> Option<anyhow::Result<std::path::PathBuf>> {
+        self.isp_board.guess_port()
+    }
+}
+
+// ----------------------------------------------------------------------------
+
 struct ArduinoUno;
 
 impl Board for ArduinoUno {
